@@ -228,17 +228,17 @@
                       <TIcon :name="shared.agent.config?.agent_mode === 'smart-reasoning' ? 'control-platform' : 'chat'" size="12px" />
                       <span>{{ shared.agent.config?.agent_mode === 'smart-reasoning' ? $t('agent.type.agent') : $t('agent.type.normal') }}</span>
                     </div>
-                    <div v-if="getKbCapability(shared.agent)" class="capability-item">
+                    <div v-if="getKbCapability(shared.agent as CustomAgent)" class="capability-item">
                       <TIcon name="folder" size="12px" />
-                      <span>{{ getKbCapability(shared.agent) }}</span>
+                      <span>{{ getKbCapability(shared.agent as CustomAgent) }}</span>
                     </div>
                     <div v-if="shared.agent.config?.web_search_enabled" class="capability-item">
                       <TIcon name="internet" size="12px" />
                       <span>{{ $t('agent.capabilities.webSearchOn') }}</span>
                     </div>
-                    <div v-if="getMcpCapability(shared.agent)" class="capability-item">
+                    <div v-if="getMcpCapability(shared.agent as CustomAgent)" class="capability-item">
                       <TIcon name="extension" size="12px" />
-                      <span>{{ getMcpCapability(shared.agent) }}</span>
+                      <span>{{ getMcpCapability(shared.agent as CustomAgent) }}</span>
                     </div>
                     <div v-if="shared.agent.config?.multi_turn_enabled" class="capability-item">
                       <TIcon name="chat-bubble" size="12px" />

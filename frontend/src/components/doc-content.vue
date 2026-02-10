@@ -1,5 +1,5 @@
-// @ts-nocheck
 <script setup lang="ts">
+// @ts-nocheck
 import { marked } from "marked";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
@@ -19,7 +19,7 @@ marked.use({
 });
 const renderer = new marked.Renderer();
 let page = 1;
-let doc = null;
+let doc: HTMLElement | null = null;
 let down = ref()
 let mdContentWrap = ref()
 let url = ref('')
@@ -108,7 +108,7 @@ onUpdated(() => {
 onUnmounted(() => {
   doc.removeEventListener('scroll', handleDetailsScroll);
 })
-const checkImage = (url) => {
+const checkImage = (url: string) => {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(true);
@@ -118,7 +118,7 @@ const checkImage = (url) => {
 };
 renderer.image = function (href, title, text) {
   // 安全地处理图片链接
-  if (!isValidImageURL(href)) {
+  if (!href || !isValidImageURL(href)) {
     return `<p>${t('error.invalidImageLink')}</p>`;
   }
   
@@ -188,7 +188,7 @@ const loadOriginalContent = async () => {
   }
   loadingOriginal.value = true;
   try {
-    const blob = await downKnowledgeDetails(props.details.id);
+    const blob = await downKnowledgeDetails(props.details.id) as Blob;
     const text = await blob.text();
     originalContent.value = text;
   } catch (error: any) {
@@ -200,9 +200,9 @@ const loadOriginalContent = async () => {
 };
 watch(() => props.details.md, (newVal) => {
   nextTick(async () => {
-    const images = mdContentWrap.value.querySelectorAll('img.markdown-image');
+    const images = mdContentWrap.value?.querySelectorAll('img.markdown-image') || [];
     if (images) {
-      images.forEach(async item => {
+      images.forEach(async (item: HTMLImageElement) => {
         const isValid = await checkImage(item.src);
         if (!isValid) {
           item.remove();
@@ -213,7 +213,7 @@ watch(() => props.details.md, (newVal) => {
 }, { immediate: true, deep: true })
 
 // 安全地处理 Markdown 内容（使用 marked）
-const processMarkdown = (markdownText) => {
+const processMarkdown = (markdownText: string) => {
   if (!markdownText || typeof markdownText !== 'string') return '';
 
   // 先还原原始文本中的 HTML 实体，让它们作为普通字符参与渲染
@@ -250,7 +250,7 @@ const processMarkdown = (markdownText) => {
 };
 const handleClose = () => {
   emit("closeDoc", false);
-  doc.scrollTop = 0;
+  if (doc) doc.scrollTop = 0;
   viewMode.value = 'merged';
   originalContent.value = '';
 };
@@ -438,7 +438,7 @@ const isDeleting = (chunkIndex: number, questionId: string) => {
 
 const downloadFile = () => {
   downKnowledgeDetails(props.details.id)
-    .then((result) => {
+    .then((result: Blob) => {
       if (result) {
         if (url.value) {
           URL.revokeObjectURL(url.value);

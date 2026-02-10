@@ -2,8 +2,7 @@ import { post, get, put } from '@/utils/request'
 
 // 用户登录接口
 export interface LoginRequest {
-  email: string
-  password: string
+  identifier: string
 }
 
 export interface LoginResponse {
@@ -38,9 +37,7 @@ export interface LoginResponse {
 
 // 用户注册接口
 export interface RegisterRequest {
-  username: string
   email: string
-  password: string
 }
 
 export interface RegisterResponse {

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -68,33 +69,21 @@ func NewUserService(
 func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) (*types.User, error) {
 	logger.Info(ctx, "Start user registration")
 
-	// Validate input
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		return nil, errors.New("username, email and password are required")
+	if req.Email == "" {
+		return nil, errors.New("identifier is required")
 	}
 
-	// Check if user already exists
-	existingUser, _ := s.userRepo.GetUserByEmail(ctx, req.Email)
+	if !isValidEmailOrPhone(req.Email) {
+		return nil, errors.New("invalid identifier format")
+	}
+
+	existingUser, _ := s.userRepo.GetUserByIdentifier(ctx, req.Email)
 	if existingUser != nil {
-		return nil, errors.New("user with this email already exists")
+		return nil, errors.New("user with this identifier already exists")
 	}
 
-	existingUser, _ = s.userRepo.GetUserByUsername(ctx, req.Username)
-	if existingUser != nil {
-		return nil, errors.New("user with this username already exists")
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to hash password: %v", err)
-		return nil, errors.New("failed to process password")
-	}
-
-	// Create default tenant for the user
-	// Note: RetrieverEngines is left empty - system will use defaults from RETRIEVE_DRIVER env
 	tenant := &types.Tenant{
-		Name:        fmt.Sprintf("%s's Workspace", secutils.SanitizeForLog(req.Username)),
+		Name:        fmt.Sprintf("%s's Workspace", secutils.SanitizeForLog(req.Email)),
 		Description: "Default workspace",
 		Status:      "active",
 	}
@@ -105,14 +94,15 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 		return nil, errors.New("failed to create workspace")
 	}
 
-	// Create user
 	user := &types.User{
 		ID:           uuid.New().String(),
-		Username:     req.Username,
+		Username:     req.Email,
 		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
+		Contact:      req.Email,
+		PasswordHash: "",
 		TenantID:     createdTenant.ID,
 		IsActive:     true,
+		LoginCount:   1,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -130,21 +120,43 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 // Login authenticates a user and returns tokens
 func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*types.LoginResponse, error) {
 	logger.Info(ctx, "Start user login")
-	// Get user by email
-	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
+	if req.Identifier == "" || !isValidEmailOrPhone(req.Identifier) {
+		return &types.LoginResponse{Success: false, Message: "Invalid identifier format"}, nil
+	}
+	// Get user by identifier
+	user, err := s.userRepo.GetUserByIdentifier(ctx, req.Identifier)
 	if err != nil {
 		logger.Errorf(ctx, "Failed to get user by email: %v", err)
 		return &types.LoginResponse{
 			Success: false,
-			Message: "Invalid email or password",
+			Message: "Invalid identifier",
 		}, nil
 	}
 	if user == nil {
-		logger.Warn(ctx, "User not found for email")
-		return &types.LoginResponse{
-			Success: false,
-			Message: "Invalid email or password",
-		}, nil
+		logger.Info(ctx, "User not found, auto creating by identifier")
+		tenant := &types.Tenant{
+			Name:        fmt.Sprintf("%s's Workspace", secutils.SanitizeForLog(req.Identifier)),
+			Description: "Default workspace",
+			Status:      "active",
+		}
+		createdTenant, createErr := s.tenantService.CreateTenant(ctx, tenant)
+		if createErr != nil {
+			return &types.LoginResponse{Success: false, Message: "Failed to create workspace"}, nil
+		}
+		user = &types.User{
+			ID:         uuid.New().String(),
+			Username:   req.Identifier,
+			Email:      req.Identifier,
+			Contact:    req.Identifier,
+			TenantID:   createdTenant.ID,
+			IsActive:   true,
+			LoginCount: 0,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+		if createErr = s.userRepo.CreateUser(ctx, user); createErr != nil {
+			return &types.LoginResponse{Success: false, Message: "Failed to create user"}, nil
+		}
 	}
 
 	// Check if user is active
@@ -156,16 +168,13 @@ func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*type
 		}, nil
 	}
 
-	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
-	if err != nil {
-		logger.Warn(ctx, "Password verification failed")
-		return &types.LoginResponse{
-			Success: false,
-			Message: "Invalid email or password",
-		}, nil
+	user.LoginCount += 1
+	user.Contact = req.Identifier
+	user.Email = req.Identifier
+	user.UpdatedAt = time.Now()
+	if err := s.userRepo.UpdateUser(ctx, user); err != nil {
+		logger.Warnf(ctx, "Failed to update login count: %v", err)
 	}
-	logger.Info(ctx, "Password verification successful")
 
 	// Generate tokens
 	logger.Info(ctx, "Generating tokens")
@@ -211,6 +220,11 @@ func (s *userService) GetUserByEmail(ctx context.Context, email string) (*types.
 // GetUserByUsername gets a user by username
 func (s *userService) GetUserByUsername(ctx context.Context, username string) (*types.User, error) {
 	return s.userRepo.GetUserByUsername(ctx, username)
+}
+
+// GetUserByIdentifier gets a user by contact identifier
+func (s *userService) GetUserByIdentifier(ctx context.Context, identifier string) (*types.User, error) {
+	return s.userRepo.GetUserByIdentifier(ctx, identifier)
 }
 
 // UpdateUser updates user information
@@ -433,4 +447,10 @@ func (s *userService) SearchUsers(ctx context.Context, query string, limit int) 
 		return []*types.User{}, nil
 	}
 	return s.userRepo.SearchUsers(ctx, query, limit)
+}
+
+func isValidEmailOrPhone(identifier string) bool {
+	emailPattern := regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
+	phonePattern := regexp.MustCompile(`^\+?[0-9]{6,20}$`)
+	return emailPattern.MatchString(identifier) || phonePattern.MatchString(identifier)
 }
