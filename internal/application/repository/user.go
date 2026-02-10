@@ -44,8 +44,12 @@ func (r *userRepository) GetUserByID(ctx context.Context, id string) (*types.Use
 
 // GetUserByEmail gets a user by email
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*types.User, error) {
+	return r.GetUserByIdentifier(ctx, email)
+}
+
+func (r *userRepository) GetUserByIdentifier(ctx context.Context, identifier string) (*types.User, error) {
 	var user types.User
-	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&user).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("email = ? OR contact = ?", identifier, identifier).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}

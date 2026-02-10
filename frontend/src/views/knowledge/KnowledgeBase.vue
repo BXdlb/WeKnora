@@ -112,8 +112,8 @@ const tagPage = ref(1);
 const tagHasMore = ref(false);
 const tagLoadingMore = ref(false);
 const tagTotal = ref(0);
-let tagSearchDebounce: ReturnType<typeof setTimeout> | null = null;
-let docSearchDebounce: ReturnType<typeof setTimeout> | null = null;
+let tagSearchDebounce: number | null = null;
+let docSearchDebounce: number | null = null;
 const docSearchKeyword = ref('');
 const selectedFileType = ref('');
 const fileTypeOptions = computed(() => [
@@ -480,7 +480,7 @@ const loadKnowledgeList = async () => {
       }));
     
     // Merge and deduplicate by id (my KBs take precedence)
-    const myKbIds = new Set(myKbs.map(kb => kb.id));
+    const myKbIds = new Set(myKbs.map((kb: { id: string }) => kb.id));
     const uniqueSharedKbs = sharedKbs.filter(kb => !myKbIds.has(kb.id));
     
     knowledgeList.value = [...myKbs, ...uniqueSharedKbs];

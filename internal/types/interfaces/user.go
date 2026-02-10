@@ -16,6 +16,8 @@ type UserService interface {
 	GetUserByID(ctx context.Context, id string) (*types.User, error)
 	// GetUserByEmail gets a user by email
 	GetUserByEmail(ctx context.Context, email string) (*types.User, error)
+	// GetUserByIdentifier gets a user by contact identifier (phone/email)
+	GetUserByIdentifier(ctx context.Context, identifier string) (*types.User, error)
 	// GetUserByUsername gets a user by username
 	GetUserByUsername(ctx context.Context, username string) (*types.User, error)
 	// UpdateUser updates user information
@@ -48,6 +50,8 @@ type UserRepository interface {
 	GetUserByID(ctx context.Context, id string) (*types.User, error)
 	// GetUserByEmail gets a user by email
 	GetUserByEmail(ctx context.Context, email string) (*types.User, error)
+	// GetUserByIdentifier gets a user by contact identifier (phone/email)
+	GetUserByIdentifier(ctx context.Context, identifier string) (*types.User, error)
 	// GetUserByUsername gets a user by username
 	GetUserByUsername(ctx context.Context, username string) (*types.User, error)
 	// UpdateUser updates a user

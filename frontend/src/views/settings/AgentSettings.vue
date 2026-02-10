@@ -161,7 +161,7 @@
             </t-button>
           </div>
           <p class="prompt-tab-hint">
-            {{ $t('agentSettings.systemPrompt.tabHint') }}（留空则使用系统默认，使用 {{web_search_status}} 占位符动态控制网络搜索行为）
+            {{ $t('agentSettings.systemPrompt.tabHint') }}（留空则使用系统默认，使用 <code v-pre>{{web_search_status}}</code> 占位符动态控制网络搜索行为）
           </p>
           <div class="system-prompt-tabs">
             <div class="prompt-textarea-wrapper textarea-with-template">
@@ -1203,6 +1203,12 @@ const filteredPlaceholders = computed(() => {
     p.name.toLowerCase().startsWith(prefix)
   )
 })
+
+
+
+const getActivePromptRef = () => {
+  return localSystemPrompt
+}
 
 // 计算光标在 textarea 中的像素位置
 const calculateCursorPosition = (textarea: HTMLTextAreaElement) => {

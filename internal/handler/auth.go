@@ -75,9 +75,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	req.Password = secutils.SanitizeForLog(req.Password)
 
 	// Validate required fields
-	if req.Username == "" || req.Email == "" || req.Password == "" {
+	if req.Email == "" {
 		logger.Error(ctx, "Missing required registration fields")
-		appErr := errors.NewValidationError("Username, email and password are required")
+		appErr := errors.NewValidationError("Identifier is required")
 		c.Error(appErr)
 		return
 	}
@@ -125,12 +125,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.Error(appErr)
 		return
 	}
-	email := secutils.SanitizeForLog(req.Email)
+	identifier := secutils.SanitizeForLog(req.Identifier)
 
 	// Validate required fields
-	if req.Email == "" || req.Password == "" {
+	if req.Identifier == "" {
 		logger.Error(ctx, "Missing required login fields")
-		appErr := errors.NewValidationError("Email and password are required")
+		appErr := errors.NewValidationError("Identifier is required")
 		c.Error(appErr)
 		return
 	}
@@ -153,7 +153,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// User is already in the correct format from service
 
-	logger.Infof(ctx, "User logged in successfully, email: %s", email)
+	logger.Infof(ctx, "User logged in successfully, identifier: %s", identifier)
 	c.JSON(http.StatusOK, response)
 }
 

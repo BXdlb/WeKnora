@@ -14,8 +14,10 @@ type User struct {
 	Username string `json:"username"   gorm:"type:varchar(100);uniqueIndex;not null"`
 	// Email address of the user
 	Email string `json:"email"      gorm:"type:varchar(255);uniqueIndex;not null"`
+	// Contact identifier of user (phone or email)
+	Contact string `json:"contact"    gorm:"type:varchar(255);uniqueIndex"`
 	// Hashed password of the user
-	PasswordHash string `json:"-"          gorm:"type:varchar(255);not null"`
+	PasswordHash string `json:"-"          gorm:"type:varchar(255)"`
 	// Avatar URL of the user
 	Avatar string `json:"avatar"     gorm:"type:varchar(500)"`
 	// Tenant ID that the user belongs to
@@ -24,6 +26,8 @@ type User struct {
 	IsActive bool `json:"is_active"  gorm:"default:true"`
 	// Whether the user can access all tenants (cross-tenant access)
 	CanAccessAllTenants bool `json:"can_access_all_tenants" gorm:"default:false"`
+	// Login count for this contact
+	LoginCount int64 `json:"login_count" gorm:"default:0"`
 	// Creation time of the user
 	CreatedAt time.Time `json:"created_at"`
 	// Last updated time of the user
@@ -60,8 +64,7 @@ type AuthToken struct {
 
 // LoginRequest represents a login request
 type LoginRequest struct {
-	Email    string `json:"email"    binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	Identifier string `json:"identifier" binding:"required"`
 }
 
 // RegisterRequest represents a registration request
@@ -94,6 +97,7 @@ type UserInfo struct {
 	ID                  string    `json:"id"`
 	Username            string    `json:"username"`
 	Email               string    `json:"email"`
+	Contact             string    `json:"contact"`
 	Avatar              string    `json:"avatar"`
 	TenantID            uint64    `json:"tenant_id"`
 	IsActive            bool      `json:"is_active"`
@@ -108,6 +112,7 @@ func (u *User) ToUserInfo() *UserInfo {
 		ID:                  u.ID,
 		Username:            u.Username,
 		Email:               u.Email,
+		Contact:             u.Contact,
 		Avatar:              u.Avatar,
 		TenantID:            u.TenantID,
 		IsActive:            u.IsActive,
