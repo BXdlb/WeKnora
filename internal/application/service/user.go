@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/Tencent/WeKnora/internal/application/repository"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
@@ -126,11 +127,14 @@ func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*type
 	// Get user by identifier
 	user, err := s.userRepo.GetUserByIdentifier(ctx, req.Identifier)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to get user by email: %v", err)
-		return &types.LoginResponse{
-			Success: false,
-			Message: "Invalid identifier",
-		}, nil
+		if !errors.Is(err, repository.ErrUserNotFound) {
+			logger.Errorf(ctx, "Failed to get user by identifier: %v", err)
+			return &types.LoginResponse{
+				Success: false,
+				Message: "Login failed",
+			}, nil
+		}
+		user = nil
 	}
 	if user == nil {
 		logger.Info(ctx, "User not found, auto creating by identifier")
