@@ -399,9 +399,15 @@ const formRules = computed(() => ({
   identifier: [
     { required: true, message: t('auth.identifierRequired'), type: 'error' },
     {
-      validator: (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || /^\+?[0-9]{6,20}$/.test(val),
-      message: t('auth.identifierInvalid'),
-      type: 'error'
+      validator: (val: string) => {
+        const normalizedValue = val?.trim?.() ?? ''
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedValue) || /^\+?[0-9]{6,20}$/.test(normalizedValue)
+        return {
+          result: valid,
+          message: valid ? '' : t('auth.identifierInvalid'),
+          type: valid ? 'success' : 'error'
+        }
+      }
     }
   ]
 }))
@@ -445,9 +451,10 @@ const handleLogin = async () => {
     if (!valid) return
 
     loading.value = true
+    const identifier = formData.identifier.trim()
     
     const response = await login({
-      identifier: formData.identifier,
+      identifier,
     })
 
     if (response.success) {
